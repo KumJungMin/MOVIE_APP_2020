@@ -1,6 +1,3 @@
-# ReactJS Code Description
-
-
 # 1. REACT Fandamental method
 
 ## 1) props의 사용
@@ -351,9 +348,265 @@ export default App;
 
 # 2. Make Movie-api react-App  
 
+- App.js
+- src
+  - components    
+    - Movie.js
+    - Navigation.js
+
+  - routes
+    - About.js
+    - Detail.js
+    - Home.js
 
 
+## 1) App.js
+
+- `HashRouter`는 `raect-router-dom`의 기능으로, 라우터 기능을 한다.
+
+- `HashRouter`안에는 `Route`가 있어야 한다.
+
+- `HashRouter`는 깃업 페이지 업로드할 때 더 편하다.
+
+- `Router`밖에서는 `link`를 쓸 수 없다.
+
+- `Route`컴포넌트에서 `exact={true}`를 한다.
+>exact를 하지 않으면 /가 포함되는 모든 주소의 것들이 로드됨 그래서 exact을 해야함
+
+```js
+import React from "react";
+import { HashRouter, Route } from "react-router-dom";
+import Home from "./routes/Home";
+import About from "./routes/About";
+import Detail from "./routes/Detail";
+import Navigation from "./components/Navigation";
+import "./App.css";
+
+function App() {
+  return (
+    <HashRouter>     
+      <Navigation />  
+      <Route path="/" exact={true} component={Home} />  
+      <Route path="/about" component={About} />
+      {/* path는 url   컴포넌트= 경로*/}
+      {/* path는 about과 같을 필요가 없음. 그냥 주소에서 나타나는 url일 뿐 */}
+      <Route path="/movie/:id" component={Detail} />
+    </HashRouter>
+  );
+}
+
+export default App;
+
+```
+
+<br/>
+
+## 2) src
+
+### (1) component > Movie.js
+
+- api에서 가져온 `Movie`값을 `props`로 받아, `render`하는 역할을 한다.(화면에 띄워줌)
+
+- `Link`컴포넌트에서 `pathname`을 사용하면, 이동시 `pathname`주소로 `state`값을 보낼 수 있다.
+
+- `<link src="" />`를 하면, 페이지가 강제로 새로고침하고 리액트가 죽는다.
+
+```js
+
+// 실제 movies값을 render하자
+import React from 'react';
+import PropTypes from 'prop-types';
+import "./Movie.css";
+import { Link } from "react-router-dom";
+
+function Movie({id, year, title, summary, poster, genres}){
+return(
+    <div className="movies__movie">
+        <Link
+        to={{
+          pathname: `/movie/${id}`,    //이동할 때, pathname주소로 state값을 보낼 수 있음
+          state: {
+            year,
+            title,
+            summary,
+            poster,
+            genres
+          }
+        }}
+      >
+         <img src={poster} alt={title} title={title} />
+        <div className="movie__data">
+            <h3 className="movie__title">{title}</h3>
+            <h5 className="movie__year">{year}</h5>
+            <ul className="genres">
+                {genres.map((genre, index) => (  
+                <li key={index} className="genres__genre">{genre}</li> //map은 항상 키가 있어야 함
+                ))}
+            </ul>
+
+            <p className="movie__summary">{summary.slice(0, 140)}</p>
+            
+        </div>
+          
+
+      </Link>
+    </div>
+    
+);
+}
+
+// 우리가 가져올 props의 타입에 대한 알려줌-> 타입이 다르면 컴퓨터에서 경고문을 띄움
+// api에서 제공하는 아래 속성들을 사용할 것
+Movie.propTypes = {   //소문자 p
+    id : PropTypes.number.isRequired,   //불러온 대문자 P
+    year : PropTypes.number.isRequired,
+    title : PropTypes.string.isRequired,
+    summary : PropTypes.string.isRequired,
+    poster : PropTypes.string.isRequired,
+    genres : PropTypes.arrayOf(PropTypes.string).isRequired 
+    //배열로 포함된 장르 속성  --> 장르 : {장르1, 장르2}
+    
+}
+
+export default Movie;
+
+```
 
 
+<br/>
 
+### (2) component > Navigation.js
+
+- 화면에서 메뉴에 해당하는 컴포넌트이다.
+
+```js
+import React from "react";
+import { Link } from "react-router-dom";
+import "./Navigation.css";
+
+function Navigation() {
+  return (
+    <div className="nav">
+      {/* 리액트에서 쓰는 링크태그 형식 */}
+      <Link to="/">Home</Link>
+      <Link to="/about">About</Link>
+    </div>
+  );
+}
+
+export default Navigation;
+```
+
+
+<br/>
+
+## 2) routes
+
+### (1) route > Home.js
+
+- `movie-api`를 가져와서 `component > Movie.js`에 데이터를 보내준다.
+
+- 그러면 `Movie.js`에서는 해당 데이터를 받아서, 적절한 html으로 랜더링한다.
+
+```js
+import React from "react";
+import axios from "axios";
+import Movie from "../components/Movie";
+import "./Home.css";
+
+class Home extends React.Component {
+  state = {
+    isLoading: true,
+    movies: []
+  };
+  getMovies = async () => {
+    const {
+      data: {
+        data: { movies }
+      }
+    } = await axios.get(
+      "https://yts-proxy.now.sh/list_movies.json?sort_by=rating"
+    );
+    this.setState({ movies, isLoading: false });
+  };
+  componentDidMount() {
+    this.getMovies();
+  }
+  render() {
+    const { isLoading, movies } = this.state;  //this.state안에 있는 변수를 가져와서 간단하게 사용하는 법
+    return ( 
+      <section className="container">
+        {isLoading ? (
+          <div className="loader">
+            <span className="loader__text">Loading...</span>
+          </div>
+        ) : (
+          <div className="movies">
+            {movies.map(movie => (
+              <Movie
+                key={movie.id}
+                id={movie.id}
+                year={movie.year}
+                title={movie.title}
+                summary={movie.summary}
+                poster={movie.medium_cover_image}
+                genres={movie.genres}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
+}
+
+export default Home;
+
+
+```
+
+<br/>
+
+### (2) routes > Detail.js
+
+- 라우터에 있는 모든 라우트들은 props값을 가진다.
+>location <br/> history <br/> match <br/> staticContext
+```js
+<Link 
+  to={{
+    pathname : "/course",
+    search : "?sort=name",
+    hash : "#the-hash",
+    state : {fromDashborad : true}
+  }}
+```
+
+- `location` : 현재 경로 정보, URL 쿼리 (/about?foo=bar 형식) 정보
+
+- `history` : `push`, `replace` 를 통해 다른 경로로 이동, 앞 뒤 페이지로 전환 
+
+- `match` : 어떤 라우트에 매칭이 되었는지에 대한 정보, params (/about/:name 형식) 정보
+
+```js
+import React from "react";
+
+class Detail extends React.Component {
+  componentDidMount() {
+    const { location, history } = this.props;
+    if (location.state === undefined) {
+      history.push("/");    //리다이렉션
+    }
+  }
+  render() {
+    const { location } = this.props;   //보내온 정보중에서 lication이 정의되 있다면~
+    if (location.state) {
+      return <span>{location.state.title}</span>;
+    } else {
+      return null;
+    }
+  }
+}
+export default Detail;
+
+```
 
